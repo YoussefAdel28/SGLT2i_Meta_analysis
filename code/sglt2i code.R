@@ -146,3 +146,118 @@ df_final <- df_final %>%
     )
   ) %>%
   select(-mean_change_calc_c, -sd_change_calc_c)
+
+
+df_change <- df_final %>%
+  filter(value_type == "Change")
+
+outcome_list <- split(df_change, df_change$outcome)
+
+df_change[17, "outcome"] <- "Peroneal_nerve_latency"
+
+run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
+  outcome_name <- unique(data_subset$outcome)
+  
+  if (fixed == TRUE) {
+    model_label <- "_Fixed"
+  } else {
+    model_label <- "_Random"
+  }
+  
+  # 3. Add the Inversion label
+  if (inverted == TRUE) {
+    inv_label <- "_Inverted_"
+  } else {
+    inv_label <- "_Standard_"
+  }
+  plot_name <- paste0("Forest", model_label, inv_label, outcome_name)
+  
+  # 1. Run the meta-analysis
+  m <- meta::metacont(n.e = n_e,
+                      mean.e = mean_e,
+                      sd.e = sd_e,
+                      n.c = n_c,
+                      mean.c = mean_c,
+                      sd.c = sd_c,
+                      studlab = study_id,
+                      data = data_subset,
+                      sm = "MD",
+                      fixed = fixed,
+                      random = random,
+                      method.tau = "REML")
+  
+  if (inverted == TRUE) { # Invert study-level effects
+    old_lower <- m$lower
+    old_upper <- m$upper
+    
+    m$TE    <- -m$TE
+    m$lower <- -old_upper
+    m$upper <- -old_lower
+    
+    if (fixed == TRUE && random == FALSE) { 
+      # Invert COMMON (fixed) effects pooled estimate
+      # Note: m$TE.common is used for the fixed effect result
+      old_lower_c <- m$lower.common
+      old_upper_c <- m$upper.common
+      
+      m$TE.common    <- -m$TE.common
+      m$lower.common <- -old_upper_c
+      m$upper.common <- -old_lower_c}
+    
+    if (fixed == FALSE && random == TRUE) {# Invert random-effects pooled estimate
+      old_lower_r <- m$lower.random
+      old_upper_r <- m$upper.random
+      
+      m$TE.random    <- -m$TE.random
+      m$lower.random <- -old_upper_r
+      m$upper.random <- -old_lower_r
+    }
+  }
+  
+  # 2. Generate the Forest Plot
+  meta::forest(m, 
+               layout = "RevMan5",
+               common = fixed,
+               random = random,
+               # Forces the "Test for overall effect" for the fixed model
+               test.overall.common = fixed,
+               test.overall.random = random,
+               # Increase horizontal gap between columns (try 4mm or 5mm)
+               colgap = "6mm", 
+               # Adjust vertical spacing between rows (1.5 is more airy)
+               spacing = 1,
+               # Ensure the plot doesn't shrink too much
+               plotwidth = "8 cm",
+               # FORCE Mean and SD specifically
+               digits.mean = 1,
+               digits.sd = 1,
+               
+               digits.weight = 1,    
+               digits.I2 = 0,        
+               digits.pval = 2,
+               # Change the column headers for the two groups
+               label.e = "SGLT2i",
+               label.c = "Standard care",
+               label.left = "Standard care",
+               label.right = "SGLT2i"
+  )
+  grid.text(
+    plot_name,
+    y = unit(0.97, "npc"),
+    gp = gpar(fontsize = 14, fontface = "bold")
+  )
+  
+  return(m) # Saves the math results in a list
+}
+
+run_my_meta(outcome_list$CNFL, fixed = TRUE, random = FALSE, inverted = FALSE)
+
+leave_one_out_plot <- function(data_set, fixed, random, inverted) {
+  meta_plot <- run_my_meta(data_set, fixed, random, inverted)
+  leave_one_out <- metainf(meta_plot)
+  
+  forest(leave_one_out,
+         layout = "RevMan5")}
+
+leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
+
