@@ -74,7 +74,7 @@ df_wide <- df_final %>%
     values_from = c(mean_e, sd_e, n_e)
   )
 
-r_value <- 0.7   # recommended for nerve conduction
+r_value <- 0   # recommended for nerve conduction
 df_wide <- df_wide %>%
   mutate(
     mean_change_calc = mean_e_Endpoint - mean_e_Baseline,
@@ -250,7 +250,7 @@ run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
   return(m) # Saves the math results in a list
 }
 
-run_my_meta(outcome_list$CNFL, fixed = TRUE, random = FALSE, inverted = FALSE)
+run_my_meta(outcome_list$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
 
 leave_one_out_plot <- function(data_set, fixed, random, inverted) {
   meta_plot <- run_my_meta(data_set, fixed, random, inverted)
@@ -261,3 +261,37 @@ leave_one_out_plot <- function(data_set, fixed, random, inverted) {
 
 leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
 
+run_and_save_meta_tiff <- function(data_subset, fixed, random, inverted = FALSE) {
+  outcome_name <- unique(data_subset$outcome)
+  
+  # Create a filename (e.g., "Forest_fixed/random_CMS_6wks.tif")
+  
+  if (fixed == TRUE) {
+    model_label <- "_Fixed"
+  } else {
+    model_label <- "_Random"
+  }
+  
+  # 3. Add the Inversion label
+  if (inverted == TRUE) {
+    inv_label <- "_Inverted_"
+  } else {
+    inv_label <- "_Standard_"
+  }
+  
+  filename <- paste0("Forest", model_label, inv_label, outcome_name, ".tif") 
+  
+  
+  tiff(filename, 
+       width = 12, height = 8, 
+       units = "in", 
+       res = 600,            # 600 DPI is superior to the standard 300
+       compression = "lzw")  # Lossless compression
+  
+  
+  run_my_meta(data_subset, fixed, random, inverted)
+  
+  dev.off()
+}
+
+run_and_save_meta_tiff(outcome_list$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
