@@ -149,7 +149,7 @@ df_change[17, "outcome"] <- "Peroneal_nerve_latency"
 
 outcome_list <- split(df_change, df_change$outcome)
 outcome_list_rightlimb <- split(df_change_r_0_right_limb_haggar_data, df_change_r_0_right_limb_haggar_data$outcome)
-
+outcome_list_leftlimb <- split(df_change_r_0_left_limb_haggar_data, df_change_r_0_left_limb_haggar_data$outcome)
 
 run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
   outcome_name <- unique(data_subset$outcome)
@@ -288,6 +288,7 @@ run_and_save_meta_tiff <- function(data_subset, fixed, random, inverted = FALSE)
   dev.off()
 }
 
-run_my_meta(outcome_list$CNBD, fixed = FALSE, random = TRUE, inverted = FALSE)
+run_my_meta(outcome_list_leftlimb$Sural_nerve_velocity, fixed = FALSE, random = TRUE, inverted = FALSE)
 leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
 run_and_save_meta_tiff(outcome_list$MDA, fixed = FALSE, random = TRUE, inverted = FALSE)
+
