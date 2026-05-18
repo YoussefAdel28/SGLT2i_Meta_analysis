@@ -20,13 +20,10 @@ library(gridExtra)
 install.packages("metamedian")
 library(metamedian)
 
-
-library(dplyr)
-
 install.packages("estmeansd") # Run this only once
 library(estmeansd)
 
-
+# this section created df_final which calculated mean and sd from median and IQR range
 df_final <- complete_raw_data_for_SGLT2i_meta_analysis %>%
   slice(1:60) %>% 
   rowwise() %>%
@@ -61,9 +58,6 @@ df_final <- complete_raw_data_for_SGLT2i_meta_analysis %>%
   # Removing helper columns
   select(-starts_with("needs_calc"), -starts_with("shift"))
 
-
-# View your complete dataset
-head(df_final)
 
 df_wide <- df_final %>%
   filter(value_type %in% c("Baseline", "Endpoint")) %>%
@@ -151,9 +145,11 @@ df_final <- df_final %>%
 df_change <- df_final %>%
   filter(value_type == "Change")
 
-outcome_list <- split(df_change, df_change$outcome)
-
 df_change[17, "outcome"] <- "Peroneal_nerve_latency"
+
+outcome_list <- split(df_change, df_change$outcome)
+outcome_list_rightlimb <- split(df_change_r_0_right_limb_haggar_data, df_change_r_0_right_limb_haggar_data$outcome)
+
 
 run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
   outcome_name <- unique(data_subset$outcome)
@@ -250,7 +246,6 @@ run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
   return(m) # Saves the math results in a list
 }
 
-run_my_meta(outcome_list$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
 
 leave_one_out_plot <- function(data_set, fixed, random, inverted) {
   meta_plot <- run_my_meta(data_set, fixed, random, inverted)
@@ -259,7 +254,6 @@ leave_one_out_plot <- function(data_set, fixed, random, inverted) {
   forest(leave_one_out,
          layout = "RevMan5")}
 
-leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
 
 run_and_save_meta_tiff <- function(data_subset, fixed, random, inverted = FALSE) {
   outcome_name <- unique(data_subset$outcome)
@@ -294,4 +288,6 @@ run_and_save_meta_tiff <- function(data_subset, fixed, random, inverted = FALSE)
   dev.off()
 }
 
-run_and_save_meta_tiff(outcome_list$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
+run_my_meta(outcome_list$CNBD, fixed = FALSE, random = TRUE, inverted = FALSE)
+leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
+run_and_save_meta_tiff(outcome_list$MDA, fixed = FALSE, random = TRUE, inverted = FALSE)
