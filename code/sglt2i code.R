@@ -233,8 +233,8 @@ run_my_meta <- function(data_subset, fixed, random, inverted = FALSE) {
                digits.pval = 2,
                # Change the column headers for the two groups
                label.e = "SGLT2i",
-               label.c = "Standard care",
-               label.left = "Standard care",
+               label.c = "Control",
+               label.left = "Control",
                label.right = "SGLT2i"
   )
   grid.text(
@@ -288,7 +288,11 @@ run_and_save_meta_tiff <- function(data_subset, fixed, random, inverted = FALSE)
   dev.off()
 }
 
-run_my_meta(outcome_list_leftlimb$Sural_nerve_velocity, fixed = FALSE, random = TRUE, inverted = FALSE)
-leave_one_out_plot(outcome_list$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
-run_and_save_meta_tiff(outcome_list$MDA, fixed = FALSE, random = TRUE, inverted = FALSE)
+df_change_r_0_right_without_ishibashi <- df_change_r_0_right_limb_haggar_data %>% 
+  filter(study_id != "Ishibashi 2022")
+outcome_list_rightlimb_without_ishibashi <- split(df_change_r_0_right_without_ishibashi, df_change_r_0_right_without_ishibashi$outcome)
+
+run_my_meta(outcome_list_rightlimb_without_ishibashi$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
+leave_one_out_plot(outcome_list_leftlimb$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
+run_and_save_meta_tiff(outcome_list_rightlimb$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
 
