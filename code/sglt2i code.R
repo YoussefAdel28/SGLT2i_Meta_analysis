@@ -296,3 +296,278 @@ run_my_meta(outcome_list_rightlimb_without_ishibashi$Sural_nerve_velocity, fixed
 leave_one_out_plot(outcome_list_leftlimb$Sural_nerve_amplitude, fixed = FALSE, random = TRUE, inverted = FALSE)
 run_and_save_meta_tiff(outcome_list_rightlimb$Sural_nerve_velocity, fixed = TRUE, random = FALSE, inverted = FALSE)
 
+library(grid)
+library(gridExtra)
+
+
+# 7. CORE FUNCTIONS
+# ================================================================
+
+# ----------------------------------------------------------------
+# 7A. FOREST PLOT GROB GENERATOR
+# Runs meta-analysis and captures forest plot as a grob object
+# plot_label is now optional (NULL = no label handling here)
+# ----------------------------------------------------------------
+create_forest_grob <- function(data_subset, fixed, random,
+                               inverted = FALSE) {
+  grob <- grid::grid.grabExpr({
+    
+    # Tight margins to eliminate captured whitespace
+    par(mar = c(0.1, 0.1, 0.1, 0.1))
+    
+    # Run meta-analysis
+    m <- meta::metacont(
+      n.e        = n_e,
+      mean.e     = mean_e,
+      sd.e       = sd_e,
+      n.c        = n_c,
+      mean.c     = mean_c,
+      sd.c       = sd_c,
+      studlab    = study_id,
+      data       = data_subset,
+      sm         = "MD",
+      fixed      = fixed,
+      random     = random,
+      method.tau = "REML"
+    )
+    
+    # Apply inversion if outcome direction needs flipping
+    # (e.g. latency where reduction = improvement)
+    if (inverted) {
+      old_lower <- m$lower
+      old_upper <- m$upper
+      m$TE      <- -m$TE
+      m$lower   <- -old_upper
+      m$upper   <- -old_lower
+      
+      if (fixed && !random) {
+        old_lc         <- m$lower.common
+        old_uc         <- m$upper.common
+        m$TE.common    <- -m$TE.common
+        m$lower.common <- -old_uc
+        m$upper.common <- -old_lc
+      }
+      if (!fixed && random) {
+        old_lr         <- m$lower.random
+        old_ur         <- m$upper.random
+        m$TE.random    <- -m$TE.random
+        m$lower.random <- -old_ur
+        m$upper.random <- -old_lr
+      }
+    }
+    
+    # Draw forest plot
+    meta::forest(
+      m,
+      layout              = "RevMan5",
+      common              = fixed,
+      random              = random,
+      test.overall.common = fixed,
+      test.overall.random = random,
+      colgap              = "6mm",
+      spacing             = 1,
+      plotwidth           = "8cm",
+      digits.mean         = 1,
+      digits.sd           = 1,
+      digits.weight       = 1,
+      digits.I2           = 0,
+      digits.pval         = 2,
+      label.e             = "SGLT2i",
+      label.c             = "Control",
+      label.left          = "Control",
+      label.right         = "SGLT2i"
+    )
+    
+  }, wrap = TRUE)
+  
+  return(grob)
+}
+
+# ----------------------------------------------------------------
+# 7B. LABEL STRIP GENERATOR
+# Creates a thin grob containing just the bold outcome title
+# left_offset aligns the title with the Study column of the plot
+# Adjust left_offset if title is not aligned with study names:
+#   too far left  → increase (e.g. 0.10, 0.12)
+#   too far right → decrease (e.g. 0.06, 0.04)
+# ----------------------------------------------------------------
+make_label_strip <- function(label_text, left_offset = 0.085, font_size = 11) {
+  
+  grid::grid.grabExpr({
+    grid.rect(gp = gpar(fill = "white", col = NA))
+    grid.text(
+      label = label_text,
+      x     = unit(left_offset, "npc"),
+      y     = unit(0.5, "npc"),
+      just  = c("left", "center"),
+      gp    = gpar(
+        fontsize  = font_size,   # <-- controlled by argument now
+        fontface  = "bold",
+        col       = "black"
+      )
+    )
+  }, wrap = TRUE)
+}
+
+# ----------------------------------------------------------------
+# 7C. COMBINED FIGURE SAVER
+# Accepts a named list where:
+#   name  = label text for that outcome
+#   value = forest plot grob for that outcome
+# Automatically interleaves label strips and forest plots
+# Heights: adjust strip_height to control label strip thickness
+#          adjust plot_height to control forest plot height
+# ----------------------------------------------------------------
+save_combined_forest_tiff <- function(named_grob_list,
+                                      filename,
+                                      width        = 14,
+                                      height       = NULL,
+                                      res          = 600,
+                                      strip_height = 0.25,
+                                      plot_height  = 4.0,
+                                      left_offset  = 0.085,
+                                      font_size    = 11) {  # <-- added here
+  
+  n_plots <- length(named_grob_list)
+  
+  if (is.null(height)) {
+    height <- n_plots * (plot_height + strip_height) + 0.5
+  }
+  
+  all_grobs   <- list()
+  all_heights <- c()
+  
+  for (i in seq_along(named_grob_list)) {
+    
+    label_text  <- names(named_grob_list)[i]
+    forest_grob <- named_grob_list[[i]]
+    
+    label_strip <- make_label_strip(
+      label_text,
+      left_offset = left_offset,
+      font_size   = font_size    # <-- passed through here
+    )
+    
+    all_grobs   <- c(all_grobs, list(label_strip), list(forest_grob))
+    all_heights <- c(all_heights, strip_height, plot_height)
+  }
+  
+  tiff(
+    filename,
+    width       = width,
+    height      = height,
+    units       = "in",
+    res         = res,
+    compression = "lzw"
+  )
+  
+  gridExtra::grid.arrange(
+    grobs   = all_grobs,
+    ncol    = 1,
+    heights = all_heights
+  )
+  
+  dev.off()
+  message("Saved successfully: ", filename)
+}
+
+# ----------------------------------------------------------------
+
+# ================================================================
+# 8. GENERATE ALL FOREST PLOT GROBS
+# ================================================================
+
+# --- SURAL NERVE ---
+grob_sural_velocity <- create_forest_grob(
+  data_subset = outcome_list_rightlimb$Sural_nerve_velocity,
+  fixed       = TRUE,
+  random      = FALSE,
+  inverted    = FALSE
+)
+
+grob_sural_amplitude <- create_forest_grob(
+  data_subset = outcome_list_rightlimb$Sural_nerve_amplitude,
+  fixed       = FALSE,
+  random      = TRUE,
+  inverted    = FALSE
+)
+
+# --- PERONEAL NERVE ---
+grob_peroneal_latency <- create_forest_grob(
+  data_subset = outcome_list_rightlimb$Peroneal_nerve_latency,
+  fixed       = TRUE,
+  random      = FALSE,
+  inverted    = TRUE    # latency: reduction = improvement so inverted
+)
+
+grob_peroneal_velocity <- create_forest_grob(
+  data_subset = outcome_list_rightlimb$Peroneal_nerve_velocity,
+  fixed       = FALSE,
+  random      = TRUE,
+  inverted    = FALSE
+)
+
+grob_peroneal_amplitude <- create_forest_grob(
+  data_subset = outcome_list_rightlimb$Peroneal_nerve_amplitude,
+  fixed       = FALSE,
+  random      = TRUE,
+  inverted    = FALSE
+)
+
+# --- MDA ---
+grob_mda <- create_forest_grob(
+  data_subset = outcome_list$MDA,
+  fixed       = FALSE,
+  random      = TRUE,
+  inverted    = FALSE
+)
+
+# ================================================================
+# 9. SAVE COMBINED FIGURES
+# ================================================================
+
+# --- FIGURE 1: Sural Nerve (velocity + amplitude combined) ---
+save_combined_forest_tiff(
+  named_grob_list = list(
+    "A. Sural Nerve Sensory Conduction Velocity" = grob_sural_velocity,
+    "B. Sural Nerve Sensory Amplitude"           = grob_sural_amplitude
+  ),
+  filename     = "Figure1_Sural_Nerve.tif",
+  width        = 14,
+  res          = 600,
+  strip_height = 0.35,   # increase strip height slightly when font is larger
+  plot_height  = 2.3,
+  left_offset  = 0.10,
+  font_size    = 14      # <-- change this number to whatever size you want
+)
+
+# --- FIGURE 2: Peroneal Nerve (latency + velocity + amplitude) ---
+save_combined_forest_tiff(
+  named_grob_list = list(
+    "A. Peroneal Nerve Motor Conduction Velocity" = grob_peroneal_velocity,
+    "B. Peroneal Nerve Motor Amplitude"           = grob_peroneal_amplitude,
+    "C. Peroneal Nerve Motor Latency"             = grob_peroneal_latency
+  
+  ),
+  filename     = "Figure2_Peroneal_Nerve.tif",
+  width        = 14,
+  res          = 600,
+  strip_height = 0.35,
+  plot_height  = 2.3,
+  left_offset  = 0.10,
+  font_size    = 14
+)
+
+# --- FIGURE 3: MDA (standalone) ---
+save_combined_forest_tiff(
+  named_grob_list = list(
+    "Malondialdehyde (MDA)" = grob_mda
+  ),
+  filename     = "Figure3_MDA.tif",
+  width        = 14,
+  res          = 600,
+  strip_height = 0.35,
+  plot_height  = 2,
+  left_offset  = 0.10,
+  font_size    = 14
+)
