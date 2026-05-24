@@ -519,7 +519,7 @@ grob_mda <- create_forest_grob(
   data_subset = outcome_list$MDA,
   fixed       = FALSE,
   random      = TRUE,
-  inverted    = FALSE
+  inverted    = TRUE
 )
 
 # ================================================================
@@ -570,4 +570,65 @@ save_combined_forest_tiff(
   plot_height  = 2,
   left_offset  = 0.10,
   font_size    = 14
+)
+
+# ================================================================
+# CORNEAL CONFOCAL MICROSCOPY FOREST PLOTS
+# ================================================================
+
+# ----------------------------------------------------------------
+# Mapping: outcome name → full title
+# ----------------------------------------------------------------
+corneal_outcomes <- list(
+  CNFD = "A. Corneal Nerve Fibre Density (CNFD)",
+  CNFL = "B. Corneal Nerve Fibre Length (CNFL)",
+  CNBD = "C. Corneal Nerve Branch Density (CNBD)"
+)
+
+# ----------------------------------------------------------------
+# Mapping: outcome name → model type
+# TRUE = fixed effects, FALSE = random effects
+# ----------------------------------------------------------------
+fixed_effects_model <- c(
+  CNFD = FALSE,
+  CNFL = TRUE,    # <-- only CNFL uses fixed effects
+  CNBD = FALSE
+)
+
+# ----------------------------------------------------------------
+# Loop: generate one forest grob per corneal outcome
+# ----------------------------------------------------------------
+corneal_grobs <- list()
+
+for (acronym in names(corneal_outcomes)) {
+  
+  full_title  <- corneal_outcomes[[acronym]]
+  use_fixed   <- fixed_effects_model[[acronym]]
+  use_random  <- !use_fixed
+  
+  if (!acronym %in% names(outcome_list_rightlimb)) {
+    warning(paste("Outcome not found in dataset:", acronym, "— skipping"))
+    next
+  }
+  
+  corneal_grobs[[full_title]] <- create_forest_grob(
+    data_subset = outcome_list_rightlimb[[acronym]],
+    fixed       = use_fixed,
+    random      = use_random,
+    inverted    = FALSE
+  )
+}
+
+# ----------------------------------------------------------------
+# Save combined figure
+# ----------------------------------------------------------------
+save_combined_forest_tiff(
+  named_grob_list = corneal_grobs,
+  filename        = "Figure_Corneal_Outcomes.tif",
+  width           = 14,
+  res             = 600,
+  strip_height    = 0.35,
+  plot_height     = 2.3,
+  left_offset     = 0.10,
+  font_size       = 14
 )
