@@ -632,3 +632,24 @@ save_combined_forest_tiff(
   left_offset     = 0.10,
   font_size       = 14
 )
+
+
+library(robvis)
+
+rob2 <- rob_traffic_light(ROB2_raw_results, "ROB2")
+
+
+library(ggplot2)
+
+rob2_final <- rob2 + 
+  theme(strip.text.y.left=element_text(angle = 0))
+
+ggsave(
+  filename    = "C:/Users/youss/Documents/2_Academics_Career/3_INTERNSHIP/7_Research/SR&MA/SGLT2i and peripheral neuropathy/Meta-analysis/SGLT2i_Meta_analysis/RoB2_Traffic_Light_Final.tif",
+  plot        = rob2_final,
+  width       = 10,
+  height      = 7,    # slightly taller to accommodate horizontal labels
+  dpi         = 600,
+  device      = "tiff",
+  compression = "lzw"
+)
